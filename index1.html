@@ -1,0 +1,88 @@
+<html>
+
+	<head>
+		<script src="messagebus1.js"></script>
+	</head>
+
+	<body>
+		<button id="button1">Click Me</button>
+		<button id="button2">Click Me</button>
+	</body>
+	<script>
+		class Widget extends MessageBus {}
+		var w = new Widget();
+		w.on('reload', function(e) {
+			console.log('Reload Listener - Please wait for data');
+			setTimeout(function() {
+				this.emit('reloaded', {data: 'hello'})
+			}.bind(this), 1000) 	// On purpose slow, to simulate ajax call
+		}.bind(w));
+
+		class DocumentController extends MessageBus {
+			constructor(element) {
+				super();
+				this.element = element;
+				this.on('reload', function(e) {
+					document.body.style.cursor = 'progress';
+				});
+				this.on('reloaded', function(e) {
+					document.body.style.cursor = 'auto';
+				});
+			}
+		}
+
+		class KeyboadController extends MessageBus {
+			constructor(element) {
+				super();
+				this.disabled = false;
+				this.element = element;
+				this.element.onkeydown = function(e) {
+					var e=window.event || e;
+					if(e.keyCode == 13 && this.disabled == false) {
+						this.emit('reload');
+					}
+				}.bind(this);
+
+				this.on('reload', function(e) {
+					this.disabled = true;
+				}.bind(this));
+				this.on('reloaded', function(e) {
+					this.disabled = false;
+				}.bind(this));
+			}
+		}
+
+		class Submit extends MessageBus {
+			constructor(element) {
+				super();
+				this.element = element;
+
+				this.element.addEventListener('click', function(e) { // Attaching a UI element Message to trigger reload
+					this.emit('reload');
+				}.bind(this));
+
+				this.on('reload', function(e) {
+					this.element.disabled = true;
+				}.bind(this));
+				this.on('reloaded', function(e) {
+					this.element.disabled = false;
+				}.bind(this));
+			};
+		}
+
+		class Table extends MessageBus {
+			constructor() {
+				super();
+				this.on('reloaded', function(e) {
+					console.log('Data Reloaded');
+					console.log(e.data);
+				})
+			}
+		}
+		var keyboad = new KeyboadController(document.body);		// A keayboard controller
+		var documentController = new DocumentController(); 		// Bootstrapping DocumentController
+		var table = new Table();						// Bootstrapping Table Controller
+		var p1 = new Submit(document.getElementById('button1'));	// Bootstrapping Button1 Controller
+		var p2 = new Submit(document.getElementById('button2'));	// Bootstrapping Button2 Controller
+	</script>
+</html>
